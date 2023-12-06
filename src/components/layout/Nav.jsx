@@ -6,8 +6,6 @@ import { useToken } from "../../stores/useUserStore";
 function Nav() {
 	const token = useToken();
 
-	console.log("token", token);
-
 	return (
 		<Navbar className="bg-primary">
 			<div className="flex-1">

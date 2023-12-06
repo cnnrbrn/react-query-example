@@ -4,11 +4,9 @@ import * as yup from "yup";
 import { useNavigate } from "react-router-dom";
 import ServerWarning from "../../shared/ServerWarning";
 import ValidationMessage from "../../shared/ValidationMessage";
-import { LOGIN_URL } from "../../../constants/api";
-import { useState } from "react";
 import { useUserActions } from "../../../stores/useUserStore";
-
-console.log(useUserActions);
+import { useMutation } from "@tanstack/react-query";
+import { login } from "../../../api/auth/login";
 
 const schema = yup
 	.object({
@@ -18,15 +16,16 @@ const schema = yup
 	.required();
 
 function LoginForm() {
-	// const [data, setData] = useState([]);
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState(null);
-
 	const { setUser } = useUserActions();
-
 	const navigate = useNavigate();
 
-	console.log(setUser);
+	const loginMutation = useMutation({
+		mutationFn: (data) => login(data),
+		onSuccess: (data) => {
+			setUser(data);
+			navigate("/dashboard");
+		},
+	});
 
 	const {
 		register,
@@ -36,44 +35,15 @@ function LoginForm() {
 		resolver: yupResolver(schema),
 	});
 
-	console.log(errors);
-
 	async function onSubmit(data) {
-		console.log(data);
-
-		const options = {
-			headers: { "Content-Type": "application/json" },
-			method: "POST",
-			body: JSON.stringify(data),
-		};
-
-		try {
-			setIsLoading(true);
-			setError(null);
-			const response = await fetch(LOGIN_URL, options);
-			const json = await response.json();
-
-			if (!response.ok) {
-				return setError(json.errors?.[0]?.message ?? "There was an error");
-			}
-
-			setUser(json);
-			navigate("/dashboard");
-
-			// store user in global state
-			/// redirect to dahsboard
-		} catch (error) {
-			setError(error.toString());
-		} finally {
-			setIsLoading(false);
-		}
+		loginMutation.mutate(data);
 	}
 
 	return (
 		<div className="flex mt-4 justify-center">
 			<form className="bg-gray-800 p-8 w-full" onSubmit={handleSubmit(onSubmit)}>
-				<fieldset disabled={isLoading}>
-					{error && <ServerWarning>{error}</ServerWarning>}
+				<fieldset disabled={loginMutation.isPending}>
+					{loginMutation.isError && <ServerWarning>{loginMutation.error.message}</ServerWarning>}
 					<div className="form-control w-full max-w-md mx-auto">
 						<label className="label">
 							<span className="label-text">Email</span>
@@ -90,7 +60,7 @@ function LoginForm() {
 					</div>
 					<div className="form-control w-full max-w-md mx-auto">
 						<button className="bg-secondary hover:bg-primary mt-2 text-white font-bold py-4 px-4 rounded">
-							{isLoading ? "Logging in..." : "Login"}
+							{loginMutation.isPending ? "Logging in..." : "Login"}
 						</button>
 					</div>
 				</fieldset>
